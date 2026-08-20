@@ -1,0 +1,38 @@
+name: Build Binaries
+
+# This tells GitHub to run the build whenever you push to main, 
+# or when you manually click a button in the Actions tab.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    strategy:
+      matrix:
+        # Here we request all three operating systems!
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.4' # You can change this to match your local version
+
+      - name: Install Dependencies
+        run: pip install pyinstaller ollama
+
+      - name: Build with PyInstaller
+        run: pyinstaller --onefile syntaxheal.py
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: syntaxheal-${{ runner.os }}
+          path: dist/*
