@@ -29,3 +29,7 @@ To run Syntax-Heal, ensure your system meets the following prerequisites:
 ## AI Usage Disclaimer
 *   **Verification Required:** This tool utilizes a local Large Language Model to generate debugging suggestions. AI models can occasionally produce inaccurate, incomplete, or highly confident but incorrect solutions (hallucinations).
 *   **Human Oversight:** The generated explanations should be used as a supplementary guide. Always review the logic and test the suggested code fixes independently before implementing them into your projects.
+  
+  
+  
+© 2026 Creatomat and Cre8to-Team. This project is open-source and licensed under the [GNU GPL v3.0](LICENSE) - see the LICENSE file for details.  
