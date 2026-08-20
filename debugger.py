@@ -95,4 +95,4 @@ while True:
     
         print(content, end="", flush=True)
 
-    print("\nTime to solve something else!")
+    print(f"\n\n\n{YELLOW}Time to solve something else!")
