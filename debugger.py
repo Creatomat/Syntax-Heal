@@ -1,5 +1,7 @@
 import ollama
 import os
+import threading
+import time
 
 BLUE = '\033[94m'
 CYAN = '\033[96m'
@@ -9,6 +11,14 @@ RED = '\033[91m'
 GRAY = '\033[90m'
 BOLD = '\033[1m'
 RESET = '\033[0m'
+
+def spin():
+    chars = "|/-\\"
+    i = 0
+    while is_thinking:
+        print(f"\r{CYAN}Thinking {chars[i % 4]}{RESET}", end="", flush=True)
+        time.sleep(0.1)
+        i += 1
 
 def clear_screen():
     os.system('clear' if os.name == 'posix' else 'cls')
@@ -41,6 +51,7 @@ while True:
         continue
     if user_code == "EXIT":
         print(f"{CYAN}\nExiting...")
+        clear_screen()
         break
     user_error = get_text(f"{GREEN}\nPaste error text:")
     if user_error == "RETRY":
@@ -48,6 +59,7 @@ while True:
         continue
     if user_error == "EXIT":
         print(f"{CYAN}\nExiting...")
+        clear_screen()
         break
     
     user_lang = input(f"{GREEN}\nWhat programming language is this? {RESET}")
@@ -63,14 +75,24 @@ while True:
         }
     ]
 
+    is_thinking = True
+    threading.Thread(target=spin, daemon=True).start()
+
     stream = ollama.chat(
         model="qwen3:8b",
         messages=model_comm,
         stream=True
     )
 
-    print(f"\n{BOLD}{GREEN}Solution:{RESET}")
+    first_word = True
+    
     for chunk in stream:
-        print(chunk["message"]["content"], end="", flush=True)
+        content = chunk["message"]["content"]
+        if first_word and content:
+            is_thinking = False
+            print(f"\r{' ' * 20}\r{BOLD}{GREEN}Solution:{RESET}\n")
+            first_word = False
+    
+        print(content, end="", flush=True)
 
     print("\nTime to solve something else!")
