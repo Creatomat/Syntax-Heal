@@ -1,37 +1,28 @@
 import ollama
 import os
-import threading
-import time
 import sys
+from rich import print as rprint
+from rich.panel import Panel
+from rich.live import Live
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.markup import escape
+from rich.prompt import Prompt
 
-BLUE = '\033[94m'
-CYAN = '\033[96m'
-GREEN = '\033[92m'
-YELLOW = '\033[93m'
-RED = '\033[91m'
-GRAY = '\033[90m'
-BOLD = '\033[1m'
-RESET = '\033[0m'
-is_thinking = True
+Prompt.prompt_suffix = ""
 
-def spin():
-    chars = "|/-\\"
-    i = 0
-    while is_thinking:
-        print(f"\r{CYAN}Thinking {chars[i % 4]}{RESET}", end="", flush=True)
-        time.sleep(0.1)
-        i += 1
+console = Console()
 
 def clear_screen():
     os.system('clear' if os.name == 'posix' else 'cls')
 
 def get_text(user_ins):
-    print(user_ins)
-    print (f"{GRAY}Type 'DONE' on a new line to continue\nType 'RETRY' if you want to start over\nType 'EXIT' to exit at any time{RESET}")
+    rprint(user_ins)
+    rprint ("[#808080]Type 'DONE' on a new line to continue\nType 'RETRY' if you want to start over\nType 'EXIT' to exit at any time[/#808080]")
 
     lines = []
     while True:
-        line = input()
+        line = Prompt.ask("[bold cyan]>[/]")
         if line == "DONE":
             break
         if line == "RETRY":
@@ -44,30 +35,29 @@ def get_text(user_ins):
     return "\n".join(lines)
 
 def main():
-    global is_thinking
     clear_screen()
-    print(f"{BOLD}{YELLOW}Syntax Heal {RESET}\n{CYAN}The Local AI Debugging Companion!")
+    rprint(Panel.fit("[bold yellow]Syntax Heal [/bold yellow]\n[italic cyan]The Local AI Debugging Companion![/italic cyan]", title="Hello user!", border_style="green"))
 
     try:
         while True:
-            user_code = get_text(f"{GREEN}\nPaste your code:")
+            user_code = get_text("[green]\nPaste your code:")
             if user_code == "RETRY":
-                print(f"{GREEN}\nTry again:")
+                rprint("[green]\nTry again")
                 continue
             if user_code == "EXIT":
-                print(f"{CYAN}\nExiting...")
+                rprint("[cyan]\nExiting...")
                 clear_screen()
                 break
-            user_error = get_text(f"{GREEN}\nPaste error text:")
+            user_error = get_text("[green]\nPaste error text:")
             if user_error == "RETRY":
-                print(f"{GREEN}\nTry again:")
+                rprint("[green]\nTry again")
                 continue
             if user_error == "EXIT":
-                print(f"{CYAN}\nExiting...")
+                rprint("[cyan]\nExiting...")
                 clear_screen()
                 break
             
-            user_lang = input(f"{GREEN}\nWhat programming language is this? {RESET}")
+            user_lang = Prompt.ask("[green]\nWhat programming language is this? [/green]")
 
             model_comm = [
                 {
@@ -80,9 +70,6 @@ def main():
                 }
             ]
 
-            is_thinking = True
-            threading.Thread(target=spin, daemon=True).start()
-
             try:
                 stream = ollama.chat(
                     model="qwen3:8b",
@@ -93,38 +80,45 @@ def main():
                     stream=True
                 )
 
-                first_word = True
-                
-                for chunk in stream:
-                    content = chunk["message"]["content"]
-                    if first_word and content:
-                        is_thinking = False
-                        print(f"\r{' ' * 20}\r{BOLD}{GREEN}Solution:{RESET}\n")
-                        first_word = False
-                
-                    print(content, end="", flush=True)
+                full_response = ""
 
-                print(f"\n\n\n{YELLOW}Time to solve something else!")
+                with Live(Panel("Thinking...", border_style="cyan"), console=console, refresh_per_second=15) as live:
+                    
+                    for chunk in stream:
+                        content = chunk["message"]["content"]
+                        if content:
+                            full_response += content
+                            
+                            rendered_markdown = Markdown(full_response)
+                            
+                            live_panel = Panel(
+                                rendered_markdown, 
+                                title="[bold green]Solution", 
+                                border_style="green"
+                            )
+                            live.update(live_panel)
+
+                rprint("\n\n\n[yellow]Time to solve something else![/yellow]")
             
             except ollama.ResponseError as e:
                 if "not found" in str(e).lower():
-                    print(f"\n{RED}Error: Model 'qwen3:8b' not found{RESET}")
-                    print(f"\n{GRAY}Please run 'ollama pull qwen3:8b' before proceeding{RESET}")
+                    rprint("\n[red]Error: Model 'qwen3:8b' not found[/red]")
+                    rprint("\n[#808080]Please run 'ollama pull qwen3:8b' before proceeding[/#808080]")
                 else:
-                    print(f"\n{RED}Ollama API Error: {e}{RESET}")
+                    rprint(f"\n[red]Ollama API Error: {escape(str(e))}[/red]")
 
             except ConnectionError:
-                print(f"\n{RED}Could not connect to the Ollama Service{RESET}")
-                print(f"\n{GRAY}Please ensure the ollama background service is running!{RESET}")
+                rprint("\n[red]Could not connect to the Ollama Service[/red]")
+                rprint("\n[#808080]Please ensure the ollama background service is running![/#808080]")
             
             except Exception as e:
                 if "connection refused" in str(e).lower():
-                    print(f"\n{RED}Error: Ollama connection refused. Is the ollama running?{RESET}")
+                    rprint("\n[red]Error: Ollama connection refused. Is ollama running?[/red]")
                 else:
-                    print(f"\n{RED}An unexpected error occurred: {e}{RESET}")
+                    rprint(f"\n[red]An unexpected error occurred: {escape(str(e))}[/red]")
     
     except KeyboardInterrupt:# Clears the current line and prints a clean exit message
-        print(f"\n\n{RED}Session interrupted (Ctrl+C). Exiting...{RESET}")
+        rprint("\n\n[red]Session interrupted (Ctrl+C). Exiting...[/red]")
         sys.exit(0)
 
 if __name__ == "__main__":
